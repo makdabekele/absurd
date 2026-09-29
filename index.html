@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Celly Cam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;600&family=Barlow:wght@400;600;800&display=swap">
+<style>
+/* Layout: arena jumbotron. Camera feed is the big screen, the scorer's table (debug) sits beside it. */
+:root{
+  --court:#0d0f14;      /* arena dark */
+  --board:#161a22;      /* scorer's table */
+  --line:#2a3040;
+  --chalk:#eef1f6;      /* text */
+  --dim:#8a93a6;
+  --knicks:#f58426;     /* Knicks orange, the accent */
+  --blue:#1d66d1;       /* Knicks blue, secondary */
+  --good:#3ddc84;
+  --display:"Anton","Impact","Arial Narrow",sans-serif;
+  --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--court);color:var(--chalk);font-family:var(--body)}
+body{padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(2.2rem,6vw,4rem);letter-spacing:.02em;margin:0;line-height:.95}
+h1 span{color:var(--knicks)}
+.tag{font-family:var(--mono);font-size:.8rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.screen{position:relative;border:3px solid var(--line);border-radius:6px;overflow:hidden;background:#000;aspect-ratio:4/3;max-width:100%}
+.screen canvas{width:100%!important;height:100%!important;display:block}
+.status{position:absolute;left:12px;top:12px;font-family:var(--mono);font-size:.8rem;background:rgba(0,0,0,.7);padding:6px 10px;border-radius:4px}
+.meter{position:absolute;left:0;right:0;bottom:0;height:10px;background:rgba(255,255,255,.08)}
+.meter i{display:block;height:100%;width:0;background:var(--knicks);transition:width .05s linear}
+.table{background:var(--board);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.table h2{font-family:var(--display);font-weight:400;font-size:1.4rem;letter-spacing:.04em;margin:0}
+.row{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:.85rem;font-variant-numeric:tabular-nums;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.row b{font-weight:600}
+.on{color:var(--good)} .off{color:var(--dim)}
+.fingers{display:flex;gap:6px}
+.fingers span{flex:1;text-align:center;font-family:var(--mono);font-size:.7rem;padding:6px 0;border-radius:4px;background:var(--court);border:1px solid var(--line);color:var(--dim)}
+.fingers span.up{background:var(--knicks);color:#111;border-color:var(--knicks);font-weight:600}
+label{font-family:var(--mono);font-size:.75rem;color:var(--dim);display:flex;flex-direction:column;gap:4px}
+input[type=range]{width:100%;accent-color:var(--knicks)}
+select{background:var(--court);color:var(--chalk);border:1px solid var(--line);padding:6px;font-family:var(--mono)}
+.how{font-size:.95rem;line-height:1.5;color:var(--dim);max-width:65ch}
+.how b{color:var(--chalk)}
+button{font-family:var(--display);font-size:1.2rem;letter-spacing:.06em;background:var(--knicks);color:#111;border:0;padding:10px 18px;border-radius:4px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--chalk);outline-offset:2px}
+
+/* The stat page that the celebration unlocks */
+#stats{position:fixed;inset:0;background:var(--blue);display:none;flex-direction:column;justify-content:center;padding:24px 16px;z-index:10;overflow:auto}
+#stats.show{display:flex;animation:slam .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes slam{from{transform:scale(1.6) rotate(-4deg);opacity:0}to{transform:none;opacity:1}}
+.card{max-width:900px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:18px}
+.jersey{font-family:var(--display);font-size:clamp(6rem,22vw,14rem);line-height:.8;color:var(--knicks);-webkit-text-stroke:3px #fff}
+.pname{font-family:var(--display);font-size:clamp(2.4rem,8vw,5rem);line-height:.9;margin:0;text-wrap:balance}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.fact{background:rgba(0,0,0,.25);padding:12px;border-radius:4px}
+.fact small{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.fact strong{font-family:var(--display);font-weight:400;font-size:1.8rem}
+.note{font-family:var(--mono);font-size:.8rem;background:rgba(0,0,0,.3);padding:10px;border-radius:4px}
+.exit{font-family:var(--mono);font-size:.85rem}
+@media (prefers-reduced-motion:reduce){#stats.show{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>CELLY <span>CAM</span></h1>
+    <div class="tag">Test build · 1 player · Brunson "3 to the mouth"</div>
+  </header>
+
+  <div class="main">
+    <div class="screen" id="screen">
+      <div class="status" id="status">Loading hand + face models…</div>
+      <div class="meter"><i id="meter"></i></div>
+    </div>
+
+    <aside class="table">
+      <h2>Scorer's table</h2>
+      <div class="row"><span>Face</span><b id="dFace" class="off">not found</b></div>
+      <div class="row"><span>Mouth source</span><b id="dMouthSrc">–</b></div>
+      <div class="row"><span>Hand</span><b id="dHand" class="off">not found</b></div>
+      <div class="fingers" id="dFingers">
+        <span>THMB</span><span>IDX</span><span>MID</span><span>RING</span><span>PNKY</span>
+      </div>
+      <div class="row"><span>3-finger shape</span><b id="dShape" class="off">no</b></div>
+      <div class="row"><span>Tip→mouth (× face width)</span><b id="dDist">–</b></div>
+      <div class="row"><span>Hold</span><b id="dHold">0 ms</b></div>
+
+      <label for="whichThree">Which three fingers
+        <select id="whichThree">
+          <option value="imr">Index · Middle · Ring</option>
+          <option value="tim">Thumb · Index · Middle</option>
+          <option value="any">Any three</option>
+        </select>
+      </label>
+      <label for="near">Mouth distance threshold: <span id="nearVal">0.55</span>
+        <input id="near" type="range" min="0.2" max="1.2" step="0.05" value="0.55">
+      </label>
+      <label for="hold">Hold time: <span id="holdVal">800</span> ms
+        <input id="hold" type="range" min="200" max="2000" step="100" value="800">
+      </label>
+      <button id="sound">Turn on arena sound</button>
+    </aside>
+  </div>
+
+  <p class="how"><b>How to test:</b> allow the camera, get your face in frame, then hold up three fingers and bring them to your mouth. Keep them there until the orange bar fills. To leave the stat page, hold up an <b>open palm</b> (all five fingers) for a second. If it misfires, adjust the sliders and watch the scorer's table to see which check is failing.</p>
+</div>
+
+<div id="stats" role="dialog" aria-label="Player stat page">
+  <div class="card">
+    <div class="jersey">11</div>
+    <p class="pname">JALEN BRUNSON</p>
+    <div class="facts">
+      <div class="fact"><small>Team</small><strong>New York Knicks</strong></div>
+      <div class="fact"><small>Position</small><strong>Point guard</strong></div>
+      <div class="fact"><small>College</small><strong>Villanova</strong></div>
+      <div class="fact"><small>Drafted</small><strong>2018 · #33</strong></div>
+    </div>
+    <div class="note">Live season stats plug in here from the BALLDONTLIE MCP server / API. These four facts are placeholders so the detector can be tested first.</div>
+    <div class="exit">Show an open palm for 1 second to go back · or <button id="closeBtn" style="font-size:.9rem;padding:4px 10px">exit</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"></script>
+<script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+<script>
+// ---------- models ----------
+let video, handPose, faceMesh;
+let hands = [], faces = [];
+const W = 640, H = 480;
+
+// hand keypoint indices (MediaPipe layout)
+const TIPS = [4, 8, 12, 16, 20];
+const PIPS = [3, 6, 10, 14, 18];
+const NAMES = ["thumb","index","middle","ring","pinky"];
+
+// state
+let lastMouth = null, lastMouthAt = 0, lastFaceW = 150;
+let holdStart = 0, palmStart = 0, statsOpen = false, cooldownUntil = 0;
+let audioCtx = null;
+
+const $ = id => document.getElementById(id);
+
+function preload(){
+  handPose = ml5.handPose({ maxHands: 1, flipped: true });
+  faceMesh = ml5.faceMesh({ maxFaces: 1, refineLandmarks: false, flipped: true });
+}
+
+function setup(){
+  const c = createCanvas(W, H);
+  c.parent("screen");
+  video = createCapture(VIDEO, { flipped: true });
+  video.size(W, H);
+  video.hide();
+  handPose.detectStart(video, r => hands = r);
+  faceMesh.detectStart(video, r => faces = r);
+  $("status").textContent = "Models ready. Show your face.";
+}
+
+// ---------- geometry helpers ----------
+const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function fingerStates(hand){
+  const k = hand.keypoints, wrist = k[0];
+  return NAMES.map((n, i) => {
+    if (i === 0){
+      // thumb: tip must be well away from the index knuckle, relative to palm size
+      const palm = d(k[0], k[9]);
+      return d(k[4], k[5]) > palm * 0.55 && d(wrist, k[4]) > d(wrist, k[3]);
+    }
+    return d(wrist, k[TIPS[i]]) > d(wrist, k[PIPS[i]]) * 1.1;
+  });
+}
+
+function isThree(up){
+  const mode = $("whichThree").value;
+  const [t, i, m, r, p] = up;
+  if (mode === "imr") return i && m && r && !p;
+  if (mode === "tim") return t && i && m && !r && !p;
+  return up.filter(Boolean).length === 3;
+}
+
+// Mouth: use the lips when the face mesh sees them. When the hand hides the
+// mouth the mesh often drops out, so fall back to the last good position
+// (valid for 1.5 s), which is what makes "fingers ON the mouth" detectable.
+function getMouth(){
+  if (faces.length){
+    const k = faces[0].keypoints;
+    const faceW = d(k[234], k[454]);
+    lastFaceW = faceW || lastFaceW;
+    const lips = { x: (k[13].x + k[14].x) / 2, y: (k[13].y + k[14].y) / 2 };
+    // cross-check against a nose-based estimate; if lips jumped (occluded), trust the nose
+    const eyes = { x: (k[33].x + k[263].x) / 2, y: (k[33].y + k[263].y) / 2 };
+    const nose = k[1];
+    const est = { x: nose.x + (nose.x - eyes.x) * 0.55, y: nose.y + (nose.y - eyes.y) * 0.55 };
+    const useLips = d(lips, est) < faceW * 0.35;
+    lastMouth = useLips ? lips : est;
+    lastMouthAt = millis();
+    return { p: lastMouth, src: useLips ? "lips" : "nose estimate", w: lastFaceW };
+  }
+  if (lastMouth && millis() - lastMouthAt < 1500){
+    return { p: lastMouth, src: "remembered", w: lastFaceW };
+  }
+  return null;
+}
+
+// ---------- main loop ----------
+function draw(){
+  image(video, 0, 0, W, H);
+  const now = millis();
+  const mouth = getMouth();
+
+  setText("dFace", faces.length ? "found" : "not found", faces.length);
+  $("dMouthSrc").textContent = mouth ? mouth.src : "–";
+
+  if (mouth){
+    noFill(); stroke(245,132,38); strokeWeight(2);
+    circle(mouth.p.x, mouth.p.y, mouth.w * parseFloat($("near").value) * 2);
+  }
+
+  let pose3 = false, palm = false, ratio = null;
+  const fingerEls = $("dFingers").children;
+
+  if (hands.length){
+    const hand = hands[0];
+    const up = fingerStates(hand);
+    [...fingerEls].forEach((el, i) => el.classList.toggle("up", up[i]));
+    setText("dHand", hand.handedness || "found", true);
+
+    // draw hand
+    noStroke();
+    hand.keypoints.forEach((p, i) => {
+      fill(TIPS.includes(i) && up[TIPS.indexOf(i)] ? color(245,132,38) : color(255,255,255,160));
+      circle(p.x, p.y, TIPS.includes(i) ? 12 : 6);
+    });
+
+    pose3 = isThree(up);
+    palm = up.every(Boolean);
+
+    if (mouth){
+      const raised = TIPS.filter((_, i) => up[i]).map(t => hand.keypoints[t]);
+      if (raised.length){
+        ratio = Math.min(...raised.map(p => d(p, mouth.p))) / mouth.w;
+      }
+    }
+  } else {
+    [...fingerEls].forEach(el => el.classList.remove("up"));
+    setText("dHand", "not found", false);
+  }
+
+  setText("dShape", pose3 ? "YES" : "no", pose3);
+  $("dDist").textContent = ratio == null ? "–" : ratio.toFixed(2);
+
+  const threshold = parseFloat($("near").value);
+  const holdMs = parseInt($("hold").value, 10);
+  const match = pose3 && ratio != null && ratio < threshold;
+
+  // ---- Brunson trigger ----
+  if (!statsOpen && now > cooldownUntil && match){
+    if (!holdStart) holdStart = now;
+    const held = now - holdStart;
+    $("dHold").textContent = Math.round(held) + " ms";
+    $("meter").style.width = Math.min(100, held / holdMs * 100) + "%";
+    $("status").textContent = "Brunson detected… hold it";
+    if (held >= holdMs) openStats();
+  } else if (!statsOpen){
+    holdStart = 0;
+    $("dHold").textContent = "0 ms";
+    $("meter").style.width = "0%";
+    $("status").textContent = !mouth ? "Can't see your face" : (pose3 ? "Three up. Now bring it to your mouth" : "Waiting for a celebration");
+  }
+
+  // ---- open palm closes the stat page ----
+  if (statsOpen){
+    if (palm){
+      if (!palmStart) palmStart = now;
+      if (now - palmStart > 1000) closeStats();
+    } else palmStart = 0;
+  }
+}
+
+function setText(id, txt, good){
+  const el = $(id);
+  el.textContent = txt;
+  el.className = good ? "on" : "off";
+}
+
+function openStats(){
+  statsOpen = true; holdStart = 0; palmStart = 0;
+  $("stats").classList.add("show");
+  $("meter").style.width = "0%";
+  horn();
+}
+function closeStats(){
+  statsOpen = false;
+  cooldownUntil = millis() + 1500;
+  $("stats").classList.remove("show");
+}
+$("closeBtn").onclick = closeStats;
+
+// ---------- UI ----------
+$("near").oninput = e => $("nearVal").textContent = e.target.value;
+$("hold").oninput = e => $("holdVal").textContent = e.target.value;
+$("sound").onclick = () => {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.resume();
+  $("sound").textContent = "Sound on";
+  horn();
+};
+
+// arena horn: two detuned sawtooths
+function horn(){
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime, g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.25, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+  g.connect(audioCtx.destination);
+  [220, 223, 330].forEach(f => {
+    const o = audioCtx.createOscillator();
+    o.type = "sawtooth"; o.frequency.value = f;
+    o.connect(g); o.start(t); o.stop(t + 0.95);
+  });
+}
+</script>
+</body>
+</html>
