@@ -5,330 +5,454 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Celly Cam</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;600&family=Barlow:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;700&family=Permanent+Marker&display=swap">
 <style>
-/* Layout: arena jumbotron. Camera feed is the big screen, the scorer's table (debug) sits beside it. */
+/* Layout: an arena. The jumbotron (your camera) is the only way in; the scorer's
+   table ranks your pose live; the coach's whiteboard below is the playbook. */
 :root{
-  --court:#0d0f14;      /* arena dark */
-  --board:#161a22;      /* scorer's table */
-  --line:#2a3040;
-  --chalk:#eef1f6;      /* text */
-  --dim:#8a93a6;
-  --knicks:#f58426;     /* Knicks orange, the accent */
-  --blue:#1d66d1;       /* Knicks blue, secondary */
-  --good:#3ddc84;
-  --display:"Anton","Impact","Arial Narrow",sans-serif;
-  --body:"Barlow","Helvetica Neue",Arial,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --arena:#0b0c10;       /* house lights down */
+  --deck:#15171e;        /* scorer's table */
+  --rail:#262a36;
+  --text:#eceef3;
+  --muted:#8b91a3;
+  --led:#ffb627;         /* scoreboard amber, the one accent */
+  --board:#f3f4f1;       /* whiteboard */
+  --marker:#1f4fbf;      /* dry-erase blue */
+  --marker-red:#d0342c;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --hand:"Permanent Marker","Comic Sans MS",cursive;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--court);color:var(--chalk);font-family:var(--body)}
-body{padding-inline:16px;padding-block:20px 40px}
-.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
-h1{font-family:var(--display);font-weight:400;font-size:clamp(2.2rem,6vw,4rem);letter-spacing:.02em;margin:0;line-height:.95}
-h1 span{color:var(--knicks)}
-.tag{font-family:var(--mono);font-size:.8rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
-.main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px}
-@media (max-width:860px){.main{grid-template-columns:1fr}}
-.screen{position:relative;border:3px solid var(--line);border-radius:6px;overflow:hidden;background:#000;aspect-ratio:4/3;max-width:100%}
-.screen canvas{width:100%!important;height:100%!important;display:block}
-.status{position:absolute;left:12px;top:12px;font-family:var(--mono);font-size:.8rem;background:rgba(0,0,0,.7);padding:6px 10px;border-radius:4px}
-.meter{position:absolute;left:0;right:0;bottom:0;height:10px;background:rgba(255,255,255,.08)}
-.meter i{display:block;height:100%;width:0;background:var(--knicks);transition:width .05s linear}
-.table{background:var(--board);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
-.table h2{font-family:var(--display);font-weight:400;font-size:1.4rem;letter-spacing:.04em;margin:0}
-.row{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:.85rem;font-variant-numeric:tabular-nums;border-bottom:1px dashed var(--line);padding-bottom:6px}
-.row b{font-weight:600}
-.on{color:var(--good)} .off{color:var(--dim)}
-.fingers{display:flex;gap:6px}
-.fingers span{flex:1;text-align:center;font-family:var(--mono);font-size:.7rem;padding:6px 0;border-radius:4px;background:var(--court);border:1px solid var(--line);color:var(--dim)}
-.fingers span.up{background:var(--knicks);color:#111;border-color:var(--knicks);font-weight:600}
-label{font-family:var(--mono);font-size:.75rem;color:var(--dim);display:flex;flex-direction:column;gap:4px}
-input[type=range]{width:100%;accent-color:var(--knicks)}
-select{background:var(--court);color:var(--chalk);border:1px solid var(--line);padding:6px;font-family:var(--mono)}
-.how{font-size:.95rem;line-height:1.5;color:var(--dim);max-width:65ch}
-.how b{color:var(--chalk)}
-button{font-family:var(--display);font-size:1.2rem;letter-spacing:.06em;background:var(--knicks);color:#111;border:0;padding:10px 18px;border-radius:4px;cursor:pointer}
-button:focus-visible{outline:3px solid var(--chalk);outline-offset:2px}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--arena);color:var(--text);font-family:var(--body);font-size:18px}
+body{padding-inline:16px;padding-block:18px 48px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:6px 24px}
+h1{font-family:var(--display);font-weight:900;font-size:clamp(3rem,9vw,6.5rem);line-height:.82;margin:0;letter-spacing:.01em;text-transform:uppercase}
+h1 em{font-style:normal;color:var(--led);text-shadow:0 0 18px rgba(255,182,39,.45)}
+.lede{max-width:34ch;color:var(--muted);font-size:1.15rem;line-height:1.3;margin:0}
+.lede b{color:var(--text)}
 
-/* The stat page that the celebration unlocks */
-#stats{position:fixed;inset:0;background:var(--blue);display:none;flex-direction:column;justify-content:center;padding:24px 16px;z-index:10;overflow:auto}
-#stats.show{display:flex;animation:slam .45s cubic-bezier(.2,1.6,.4,1)}
-@keyframes slam{from{transform:scale(1.6) rotate(-4deg);opacity:0}to{transform:none;opacity:1}}
-.card{max-width:900px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:18px}
-.jersey{font-family:var(--display);font-size:clamp(6rem,22vw,14rem);line-height:.8;color:var(--knicks);-webkit-text-stroke:3px #fff}
-.pname{font-family:var(--display);font-size:clamp(2.4rem,8vw,5rem);line-height:.9;margin:0;text-wrap:balance}
-.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.fact{background:rgba(0,0,0,.25);padding:12px;border-radius:4px}
-.fact small{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
-.fact strong{font-family:var(--display);font-weight:400;font-size:1.8rem}
-.note{font-family:var(--mono);font-size:.8rem;background:rgba(0,0,0,.3);padding:10px;border-radius:4px}
-.exit{font-family:var(--mono);font-size:.85rem}
-@media (prefers-reduced-motion:reduce){#stats.show{animation:none}}
+.court{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px}
+@media (max-width:900px){.court{grid-template-columns:1fr}}
+.tron{position:relative;background:#000;border:4px solid var(--rail);border-radius:8px;overflow:hidden;aspect-ratio:4/3;max-width:100%}
+.tron canvas{width:100%;height:100%;display:block}
+.tron video{display:none}
+.banner{position:absolute;left:0;right:0;top:0;padding:10px 14px;font-family:var(--mono);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;background:linear-gradient(rgba(0,0,0,.75),transparent);color:var(--led)}
+.gate{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;background:radial-gradient(circle at 50% 40%,#1b1e27,#050507)}
+.gate p{margin:0;color:var(--muted);max-width:40ch}
+button{font-family:var(--display);font-weight:900;font-size:1.3rem;letter-spacing:.06em;text-transform:uppercase;background:var(--led);color:#111;border:0;border-radius:4px;padding:12px 22px;cursor:pointer}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--rail);font-size:1rem;padding:8px 14px}
+button:focus-visible{outline:3px solid var(--text);outline-offset:3px}
+.hold{position:absolute;left:0;right:0;bottom:0;height:12px;background:rgba(255,255,255,.08)}
+.hold i{display:block;height:100%;width:0;background:var(--led);box-shadow:0 0 16px var(--led)}
+
+.table{background:var(--deck);border:1px solid var(--rail);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.table h2{font-family:var(--display);font-weight:900;font-size:1.6rem;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.call{font-family:var(--mono);font-size:.85rem;color:var(--led);min-height:2.6em;line-height:1.3}
+.bars{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.bars li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:1rem}
+.bars .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bars .pc{font-family:var(--mono);font-size:.85rem;font-variant-numeric:tabular-nums;color:var(--muted)}
+.bars .tr{grid-column:1/-1;height:8px;background:var(--arena);border-radius:2px;overflow:hidden}
+.bars .tr i{display:block;height:100%;background:var(--muted);transition:width .12s linear}
+.bars li.lead .tr i{background:var(--led)}
+.bars li.lead .pc{color:var(--led)}
+.bars .empty{color:var(--muted);font-size:.95rem}
+.debug{font-family:var(--mono);font-size:.72rem;color:var(--muted);display:grid;grid-template-columns:1fr auto;gap:4px 10px;border-top:1px dashed var(--rail);padding-top:10px;font-variant-numeric:tabular-nums}
+.debug b{color:var(--text);font-weight:400}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Playbook: coach's whiteboard */
+.playbook{background:var(--board);color:#1b1d22;border-radius:6px;padding:20px 16px 24px;box-shadow:inset 0 0 0 10px #d9dbd6}
+.playbook h2{font-family:var(--hand);font-weight:400;font-size:2rem;color:var(--marker-red);margin:0 0 4px 8px}
+.playbook .sub{margin:0 0 16px 8px;color:#4c5160;font-size:1.05rem}
+.plays{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.play{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:4px}
+.play canvas{width:100%;max-width:150px;aspect-ratio:1;height:auto}
+.play span{font-family:var(--hand);color:var(--marker);font-size:1.05rem;text-align:center;line-height:1.1}
+.play.hit{background:rgba(255,182,39,.25)}
+
+/* Player page */
+#player{position:fixed;inset:0;z-index:20;display:none;overflow:auto;background:var(--team1);color:#fff;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px)}
+#player.show{display:block;animation:slam .5s cubic-bezier(.2,1.5,.4,1)}
+@keyframes slam{from{transform:scale(1.5) rotate(-3deg);opacity:0}to{transform:none;opacity:1}}
+.pp{max-width:1100px;margin:0 auto;padding-block:28px;display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start}
+@media (max-width:780px){.pp{grid-template-columns:1fr}}
+.pp .num{font-family:var(--display);font-weight:900;font-size:clamp(7rem,24vw,16rem);line-height:.78;color:var(--team2);margin:0}
+.pp .name{font-family:var(--display);font-weight:900;font-size:clamp(2.6rem,8vw,5.5rem);line-height:.85;text-transform:uppercase;margin:6px 0 0;text-wrap:balance}
+.pp .move{font-family:var(--mono);font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;margin:12px 0 0;opacity:.9}
+.pp .move b{color:var(--team2)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:22px}
+.fact{background:rgba(0,0,0,.28);padding:12px;border-radius:4px}
+.fact small{display:block;font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.fact strong{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.05}
+.statbox{margin-top:14px;border:1px dashed rgba(255,255,255,.45);border-radius:4px;padding:12px;font-family:var(--mono);font-size:.8rem;opacity:.85}
+.side{display:flex;flex-direction:column;gap:12px;align-items:center}
+.side canvas{width:100%;max-width:260px;aspect-ratio:1;height:auto;background:rgba(255,255,255,.92);border-radius:6px}
+.side p{margin:0;font-family:var(--mono);font-size:.78rem;text-align:center;opacity:.9}
+.exit{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:1.05rem}
+.exit button{background:#fff;color:#111}
+.src{grid-column:1/-1;font-family:var(--mono);font-size:.7rem;opacity:.7;margin:0}
+@media (prefers-reduced-motion:reduce){#player.show{animation:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>CELLY <span>CAM</span></h1>
-    <div class="tag">Test build · 1 player · Brunson "3 to the mouth"</div>
+    <h1>Celly<br><em>Cam</em></h1>
+    <p class="lede">No menu. No search bar. <b>Hit a player's celebration on camera</b> and the site opens his page. Call a <b>timeout</b> with your hands to get back.</p>
   </header>
 
-  <div class="main">
-    <div class="screen" id="screen">
-      <div class="status" id="status">Loading hand + face models…</div>
-      <div class="meter"><i id="meter"></i></div>
+  <section class="court">
+    <div class="tron" id="tron">
+      <video id="video" playsinline muted></video>
+      <canvas id="canvas" width="640" height="480"></canvas>
+      <div class="banner" id="banner">Warming up</div>
+      <div class="gate" id="gate">
+        <button id="start">Tip off</button>
+        <p>Turns on your camera and the arena sound. Everything runs in your browser; no video leaves your computer. Stand back so your head, arms and hands are all in frame.</p>
+      </div>
+      <div class="hold"><i id="hold"></i></div>
     </div>
 
     <aside class="table">
       <h2>Scorer's table</h2>
-      <div class="row"><span>Face</span><b id="dFace" class="off">not found</b></div>
-      <div class="row"><span>Mouth source</span><b id="dMouthSrc">–</b></div>
-      <div class="row"><span>Hand</span><b id="dHand" class="off">not found</b></div>
-      <div class="fingers" id="dFingers">
-        <span>THMB</span><span>IDX</span><span>MID</span><span>RING</span><span>PNKY</span>
+      <div class="call" id="call">Waiting for tip-off.</div>
+      <ul class="bars" id="bars"><li class="empty">Live matches show up here.</li></ul>
+      <div class="controls">
+        <button class="ghost" id="dbgBtn" aria-pressed="false">Show tracking numbers</button>
       </div>
-      <div class="row"><span>3-finger shape</span><b id="dShape" class="off">no</b></div>
-      <div class="row"><span>Tip→mouth (× face width)</span><b id="dDist">–</b></div>
-      <div class="row"><span>Hold</span><b id="dHold">0 ms</b></div>
-
-      <label for="whichThree">Which three fingers
-        <select id="whichThree">
-          <option value="imr">Index · Middle · Ring</option>
-          <option value="tim">Thumb · Index · Middle</option>
-          <option value="any">Any three</option>
-        </select>
-      </label>
-      <label for="near">Mouth distance threshold: <span id="nearVal">0.55</span>
-        <input id="near" type="range" min="0.2" max="1.2" step="0.05" value="0.55">
-      </label>
-      <label for="hold">Hold time: <span id="holdVal">800</span> ms
-        <input id="hold" type="range" min="200" max="2000" step="100" value="800">
-      </label>
-      <button id="sound">Turn on arena sound</button>
+      <div class="debug" id="debug" hidden>
+        <span>Body in frame</span><b id="dBody">–</b>
+        <span>Hands tracked</span><b id="dHands">–</b>
+        <span>Jaw forward (Kobe)</span><b id="dJaw">–</b>
+        <span>Frame rate</span><b id="dFps">–</b>
+      </div>
     </aside>
-  </div>
+  </section>
 
-  <p class="how"><b>How to test:</b> allow the camera, get your face in frame, then hold up three fingers and bring them to your mouth. Keep them there until the orange bar fills. To leave the stat page, hold up an <b>open palm</b> (all five fingers) for a second. If it misfires, adjust the sliders and watch the scorer's table to see which check is failing.</p>
+  <section class="playbook">
+    <h2>The playbook</h2>
+    <p class="sub">Every move the site knows, traced from real photos. It won't tell you whose they are.</p>
+    <div class="plays" id="plays"></div>
+  </section>
 </div>
 
-<div id="stats" role="dialog" aria-label="Player stat page">
-  <div class="card">
-    <div class="jersey">11</div>
-    <p class="pname">JALEN BRUNSON</p>
-    <div class="facts">
-      <div class="fact"><small>Team</small><strong>New York Knicks</strong></div>
-      <div class="fact"><small>Position</small><strong>Point guard</strong></div>
-      <div class="fact"><small>College</small><strong>Villanova</strong></div>
-      <div class="fact"><small>Drafted</small><strong>2018 · #33</strong></div>
+<div id="player" role="dialog" aria-modal="true" aria-labelledby="pName">
+  <div class="pp">
+    <div>
+      <p class="num" id="pNum"></p>
+      <p class="name" id="pName"></p>
+      <p class="move">Unlocked with: <b id="pMove"></b></p>
+      <div class="facts" id="pFacts"></div>
+      <div class="statbox">Season averages: coming from BALLDONTLIE once the stats trial is on.</div>
     </div>
-    <div class="note">Live season stats plug in here from the BALLDONTLIE MCP server / API. These four facts are placeholders so the detector can be tested first.</div>
-    <div class="exit">Show an open palm for 1 second to go back · or <button id="closeBtn" style="font-size:.9rem;padding:4px 10px">exit</button></div>
+    <div class="side">
+      <canvas id="pFig" width="260" height="260"></canvas>
+      <p>Your move, as the tracker saw it</p>
+    </div>
+    <div class="exit"><span>Make a <b>T with your hands</b> to call timeout, or</span><button id="closeBtn">Back to the arena</button></div>
+    <p class="src">Player data: BALLDONTLIE via MCP · player ID <span id="pId"></span></p>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"></script>
-<script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
 <script>
-// ---------- models ----------
-let video, handPose, faceMesh;
-let hands = [], faces = [];
-const W = 640, H = 480;
+window.TEMPLATES = [{"player":"russell","id":"ice","label":"Ice in my veins","pts":{"nose":[0.078,-0.575,1.0],"lel":[0.542,0.707,0.92],"rel":[-0.79,0.876,0.99],"lwr":[0.653,1.203,0.84],"rwr":[-0.18,0.897,0.97],"lix":[0.671,1.381,0.81],"rix":[0.084,0.798,0.93]},"fingers":{"l":[1,1,1,1,1],"r":null}},{"player":"jr","id":"praise","label":"Praise be","pts":{"nose":[0.063,-0.607,1.0],"lel":[1.211,0.225,1.0],"rel":[-1.31,0.034,1.0],"lwr":[1.498,-0.473,0.99],"rwr":[-1.214,-0.757,1.0],"lix":[1.605,-0.723,0.96],"rix":[-1.204,-0.982,0.98]},"fingers":{"l":[1,0,1,1,1],"r":[0,1,1,1,1]}},{"player":"curry","id":"sky","label":"Point to the sky","pts":{"nose":[-0.221,-0.853,1.0],"lel":[0.845,0.791,0.89],"rel":[-1.329,0.207,0.99],"lwr":[0.839,1.652,0.43],"rwr":[-1.145,-0.528,0.99],"lix":[0.761,1.883,0.37],"rix":[-1.094,-0.763,0.93]},"fingers":{"l":null,"r":[0,1,0,0,0]}},{"player":"curry","id":"night","label":"Night night","pts":{"nose":[-0.247,-0.496,1.0],"lel":[0.359,0.607,0.99],"rel":[-0.928,0.741,1.0],"lwr":[-0.269,-0.069,1.0],"rwr":[-0.634,-0.073,0.99],"lix":[-0.389,-0.309,0.99],"rix":[-0.615,-0.316,0.93]},"fingers":{"l":[0,1,1,1,1],"r":[0,1,1,1,1]}},{"player":"mutombo","id":"wag","label":"Finger wag","pts":{"nose":[0.229,-0.748,1.0],"lel":[0.393,1.094,0.84],"rel":[-1.071,-0.326,1.0],"lwr":[0.584,1.877,0.78],"rwr":[-0.673,-1.465,1.0],"lix":[0.654,2.094,0.71],"rix":[-0.497,-1.753,0.99]},"fingers":{"l":null,"r":[0,1,0,0,0]}},{"player":"harden","id":"stir","label":"Stir the pot","pts":{"nose":[-0.234,-0.593,1.0],"lel":[0.553,-0.539,1.0],"rel":[-1.153,0.304,1.0],"lwr":[-0.188,-1.342,1.0],"rwr":[-1.138,-0.503,0.99],"lix":[-0.502,-1.443,0.97],"rix":[-1.124,-0.796,0.95]},"fingers":{"l":[1,0,0,0,0],"r":[1,1,1,1,1]}},{"player":"lebron","id":"silencer","label":"Silencer","pts":{"nose":[0,-0.6,1],"lel":[0.95,0.75,1],"rel":[-0.95,0.75,1],"lwr":[1.3,1.4,1],"rwr":[-1.3,1.4,1],"lix":[1.55,1.5,1],"rix":[-1.55,1.5,1]},"fingers":{"l":[1,1,1,1,1],"r":[1,1,1,1,1]},"manual":true},{"player":"lebron","id":"hands","label":"Hands up","pts":{"nose":[-0.001,-0.452,1.0],"lel":[1.384,-0.257,1.0],"rel":[-1.324,-0.34,1.0],"lwr":[0.717,-0.828,1.0],"rwr":[-0.751,-0.958,1.0],"lix":[0.483,-0.987,0.95],"rix":[-0.539,-1.155,0.95]},"fingers":{"l":[1,1,1,0,0],"r":[1,1,1,0,0]}},{"player":"melo","id":"dome","label":"Three to the dome","pts":{"nose":[-0.062,-0.401,1.0],"lel":[1.196,0.279,0.98],"rel":[-1.278,0.373,1.0],"lwr":[1.684,0.246,0.96],"rwr":[-0.921,-0.379,0.99],"lix":[1.828,0.196,0.9],"rix":[-0.636,-0.516,0.95]},"fingers":{"l":null,"r":[1,1,1,1,1]}},{"player":"melo","id":"dome","label":"Three to the dome","pts":{"nose":[-0.123,-0.38,1.0],"lel":[1.101,0.281,0.98],"rel":[-1.169,0.548,1.0],"lwr":[1.35,0.659,0.88],"rwr":[-0.864,-0.186,1.0],"lix":[1.333,0.827,0.72],"rix":[-0.683,-0.419,0.98]},"fingers":{"l":[1,1,1,1,1],"r":[0,0,1,1,1]}},{"player":"mj","id":"shrug","label":"The shrug","pts":{"nose":[-0.052,-0.444,1.0],"lel":[0.629,0.707,0.93],"rel":[-0.798,0.665,0.98],"lwr":[0.965,0.698,0.96],"rwr":[-0.984,0.554,0.99],"lix":[1.182,0.655,0.96],"rix":[-1.095,0.413,0.99]},"fingers":{"l":[1,1,1,1,1],"r":[1,1,1,1,1]}},{"player":"cassell","id":"dance","label":"Big shot dance","pts":{"nose":[-0.066,-0.517,1.0],"lel":[0.664,0.631,0.97],"rel":[-0.451,0.907,0.99],"lwr":[0.471,1.273,0.96],"rwr":[-0.37,1.466,0.96],"lix":[0.261,1.393,0.94],"rix":[-0.28,1.604,0.94]},"fingers":{"l":[1,1,1,1,1],"r":[1,1,1,1,1]}},{"player":"westbrook","id":"rock","label":"Rock the baby","pts":{"nose":[0.05,-0.549,1.0],"lel":[0.711,0.928,1.0],"rel":[-1.141,0.439,1.0],"lwr":[0.054,1.037,0.99],"rwr":[-1.022,0.754,0.97],"lix":[-0.201,0.972,0.96],"rix":[-0.863,0.829,0.9]},"fingers":{"l":[1,1,1,1,1],"r":[1,1,1,1,1]}},{"player":"terry","id":"jet","label":"The Jet","manual":true,"pts":{"nose":[0,-0.95,1],"lel":[1.25,0.1,1],"rel":[-1.25,0.1,1],"lwr":[2.0,0.2,1],"rwr":[-2.0,0.2,1],"lix":[2.25,0.22,1],"rix":[-2.25,0.22,1]},"fingers":{"l":null,"r":null}},{"player":"kobe","id":"underbite","label":"The underbite","face":{"jawForward":0.35}},{"player":"_timeout","id":"timeout","label":"Timeout","manual":true,"pts":{"nose":[0,-0.7,1],"lel":[0.75,0.35,1],"rel":[-0.7,0.6,1],"lwr":[0.45,0.0,1],"rwr":[-0.05,0.75,1],"lix":[-0.15,-0.02,1],"rix":[-0.05,0.2,1]},"fingers":{"l":[1,1,1,1,1],"r":[1,1,1,1,1]}}];
+window.PLAYERS = {"russell":{"bdl_id":405,"name":"D'Angelo Russell","pos":"G","ht":"6-3","wt":"193","num":"5","college":"Ohio State","draft":"2015 \u00b7 R1 #2","team":"Washington Wizards","abbr":"WAS"},"jr":{"bdl_id":424,"name":"JR Smith","pos":"G-F","ht":"6-6","wt":"220","num":"21","college":"No college","draft":"2004 \u00b7 R1 #18","team":"Denver Nuggets","abbr":"DEN"},"curry":{"bdl_id":115,"name":"Stephen Curry","pos":"G","ht":"6-2","wt":"200","num":"30","college":"Davidson","draft":"2009 \u00b7 R1 #7","team":"Golden State Warriors","abbr":"GSW"},"mutombo":{"bdl_id":660,"name":"Dikembe Mutombo","pos":"G","ht":"7-2","wt":"260","num":"55","college":"Georgetown","draft":"1991 \u00b7 R1 #4","team":"Denver Nuggets","abbr":"DEN"},"harden":{"bdl_id":192,"name":"James Harden","pos":"G","ht":"6-5","wt":"220","num":"1","college":"Arizona State","draft":"2009 \u00b7 R1 #3","team":"Cleveland Cavaliers","abbr":"CLE"},"lebron":{"bdl_id":237,"name":"LeBron James","pos":"F","ht":"6-9","wt":"250","num":"23","college":"St. Vincent-St. Mary HS (OH)","draft":"2003 \u00b7 R1 #1","team":"Philadelphia 76ers","abbr":"PHI"},"melo":{"bdl_id":17,"name":"Carmelo Anthony","pos":"F","ht":"6-7","wt":"238","num":"7","college":"Syracuse","draft":"2003 \u00b7 R1 #3","team":"Los Angeles Lakers","abbr":"LAL"},"mj":{"bdl_id":2931,"name":"Michael Jordan","pos":"G","ht":"6-6","wt":"216","num":"23","college":"North Carolina","draft":"1984 \u00b7 R1 #3","team":"Chicago Bulls","abbr":"CHI"},"cassell":{"bdl_id":830,"name":"Sam Cassell","pos":"G","ht":"6-3","wt":"185","num":"28","college":"Florida State","draft":"1993 \u00b7 R1 #24","team":"Milwaukee Bucks","abbr":"MIL"},"westbrook":{"bdl_id":472,"name":"Russell Westbrook","pos":"G","ht":"6-4","wt":"200","num":"18","college":"UCLA","draft":"2008 \u00b7 R1 #4","team":"Sacramento Kings","abbr":"SAC"},"terry":{"bdl_id":1242,"name":"Jason Terry","pos":"G","ht":"6-2","wt":"185","num":"3","college":"Arizona","draft":"1999 \u00b7 R1 #10","team":"Dallas Mavericks","abbr":"DAL"},"kobe":{"bdl_id":1043,"name":"Kobe Bryant","pos":"G","ht":"6-6","wt":"212","num":"24","college":"Lower Merion HS (PA)","draft":"1996 \u00b7 R1 #13","team":"Los Angeles Lakers","abbr":"LAL"}};
+</script>
+<script>
+// Celly matcher: compares a live body (in the same body-relative units as the
+// templates) against every celebration template. Shared by the page and the tests.
+(function (root) {
+  const W = { nose: 0.5, lel: 0.8, rel: 0.8, lwr: 1.5, rwr: 1.5, lix: 1.3, rix: 1.3 };
+  const SWAP = { lel: "rel", rel: "lel", lwr: "rwr", rwr: "lwr", lix: "rix", rix: "lix", nose: "nose" };
 
-// hand keypoint indices (MediaPipe layout)
-const TIPS = [4, 8, 12, 16, 20];
-const PIPS = [3, 6, 10, 14, 18];
-const NAMES = ["thumb","index","middle","ring","pinky"];
+  function mirror(t) {
+    const pts = {};
+    for (const k in t.pts) { const p = t.pts[k]; pts[SWAP[k]] = [-p[0], p[1], p[2]]; }
+    return { ...t, pts, fingers: { l: t.fingers.r, r: t.fingers.l } };
+  }
 
-// state
-let lastMouth = null, lastMouthAt = 0, lastFaceW = 150;
-let holdStart = 0, palmStart = 0, statsOpen = false, cooldownUntil = 0;
-let audioCtx = null;
-
-const $ = id => document.getElementById(id);
-
-function preload(){
-  handPose = ml5.handPose({ maxHands: 1, flipped: true });
-  faceMesh = ml5.faceMesh({ maxFaces: 1, refineLandmarks: false, flipped: true });
-}
-
-function setup(){
-  const c = createCanvas(W, H);
-  c.parent("screen");
-  video = createCapture(VIDEO, { flipped: true });
-  video.size(W, H);
-  video.hide();
-  handPose.detectStart(video, r => hands = r);
-  faceMesh.detectStart(video, r => faces = r);
-  $("status").textContent = "Models ready. Show your face.";
-}
-
-// ---------- geometry helpers ----------
-const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-
-function fingerStates(hand){
-  const k = hand.keypoints, wrist = k[0];
-  return NAMES.map((n, i) => {
-    if (i === 0){
-      // thumb: tip must be well away from the index knuckle, relative to palm size
-      const palm = d(k[0], k[9]);
-      return d(k[4], k[5]) > palm * 0.55 && d(wrist, k[4]) > d(wrist, k[3]);
+  // live: { pts: {nose:[x,y,vis],...}, fingers: {l:[..]|null, r:[..]|null} }
+  function distance(live, t) {
+    let sum = 0, wsum = 0;
+    for (const k in W) {
+      const a = live.pts[k], b = t.pts[k];
+      if (!a || !b) continue;
+      const w = W[k] * Math.min(1, a[2] ?? 1) * Math.min(1, b[2] ?? 1);
+      if (w < 0.05) continue;
+      sum += w * Math.hypot(a[0] - b[0], a[1] - b[1]);
+      wsum += w;
     }
-    return d(wrist, k[TIPS[i]]) > d(wrist, k[PIPS[i]]) * 1.1;
-  });
-}
-
-function isThree(up){
-  const mode = $("whichThree").value;
-  const [t, i, m, r, p] = up;
-  if (mode === "imr") return i && m && r && !p;
-  if (mode === "tim") return t && i && m && !r && !p;
-  return up.filter(Boolean).length === 3;
-}
-
-// Mouth: use the lips when the face mesh sees them. When the hand hides the
-// mouth the mesh often drops out, so fall back to the last good position
-// (valid for 1.5 s), which is what makes "fingers ON the mouth" detectable.
-function getMouth(){
-  if (faces.length){
-    const k = faces[0].keypoints;
-    const faceW = d(k[234], k[454]);
-    lastFaceW = faceW || lastFaceW;
-    const lips = { x: (k[13].x + k[14].x) / 2, y: (k[13].y + k[14].y) / 2 };
-    // cross-check against a nose-based estimate; if lips jumped (occluded), trust the nose
-    const eyes = { x: (k[33].x + k[263].x) / 2, y: (k[33].y + k[263].y) / 2 };
-    const nose = k[1];
-    const est = { x: nose.x + (nose.x - eyes.x) * 0.55, y: nose.y + (nose.y - eyes.y) * 0.55 };
-    const useLips = d(lips, est) < faceW * 0.35;
-    lastMouth = useLips ? lips : est;
-    lastMouthAt = millis();
-    return { p: lastMouth, src: useLips ? "lips" : "nose estimate", w: lastFaceW };
-  }
-  if (lastMouth && millis() - lastMouthAt < 1500){
-    return { p: lastMouth, src: "remembered", w: lastFaceW };
-  }
-  return null;
-}
-
-// ---------- main loop ----------
-function draw(){
-  image(video, 0, 0, W, H);
-  const now = millis();
-  const mouth = getMouth();
-
-  setText("dFace", faces.length ? "found" : "not found", faces.length);
-  $("dMouthSrc").textContent = mouth ? mouth.src : "–";
-
-  if (mouth){
-    noFill(); stroke(245,132,38); strokeWeight(2);
-    circle(mouth.p.x, mouth.p.y, mouth.w * parseFloat($("near").value) * 2);
-  }
-
-  let pose3 = false, palm = false, ratio = null;
-  const fingerEls = $("dFingers").children;
-
-  if (hands.length){
-    const hand = hands[0];
-    const up = fingerStates(hand);
-    [...fingerEls].forEach((el, i) => el.classList.toggle("up", up[i]));
-    setText("dHand", hand.handedness || "found", true);
-
-    // draw hand
-    noStroke();
-    hand.keypoints.forEach((p, i) => {
-      fill(TIPS.includes(i) && up[TIPS.indexOf(i)] ? color(245,132,38) : color(255,255,255,160));
-      circle(p.x, p.y, TIPS.includes(i) ? 12 : 6);
-    });
-
-    pose3 = isThree(up);
-    palm = up.every(Boolean);
-
-    if (mouth){
-      const raised = TIPS.filter((_, i) => up[i]).map(t => hand.keypoints[t]);
-      if (raised.length){
-        ratio = Math.min(...raised.map(p => d(p, mouth.p))) / mouth.w;
+    if (wsum < 2) return Infinity; // not enough of the body is visible
+    let dist = sum / wsum;
+    for (const s of ["l", "r"]) {
+      const a = live.fingers[s], b = t.fingers[s];
+      if (a && b) {
+        let miss = 0; for (let i = 0; i < 5; i++) miss += a[i] !== b[i];
+        dist += 0.12 * miss;
       }
     }
-  } else {
-    [...fingerEls].forEach(el => el.classList.remove("up"));
-    setText("dHand", "not found", false);
+    return dist;
   }
 
-  setText("dShape", pose3 ? "YES" : "no", pose3);
-  $("dDist").textContent = ratio == null ? "–" : ratio.toFixed(2);
-
-  const threshold = parseFloat($("near").value);
-  const holdMs = parseInt($("hold").value, 10);
-  const match = pose3 && ratio != null && ratio < threshold;
-
-  // ---- Brunson trigger ----
-  if (!statsOpen && now > cooldownUntil && match){
-    if (!holdStart) holdStart = now;
-    const held = now - holdStart;
-    $("dHold").textContent = Math.round(held) + " ms";
-    $("meter").style.width = Math.min(100, held / holdMs * 100) + "%";
-    $("status").textContent = "Brunson detected… hold it";
-    if (held >= holdMs) openStats();
-  } else if (!statsOpen){
-    holdStart = 0;
-    $("dHold").textContent = "0 ms";
-    $("meter").style.width = "0%";
-    $("status").textContent = !mouth ? "Can't see your face" : (pose3 ? "Three up. Now bring it to your mouth" : "Waiting for a celebration");
+  // Returns every template scored 0..1, best first. Each template is also tried
+  // mirrored, since people copy a photo with whichever hand feels natural.
+  function rank(live, templates, face) {
+    const best = {};
+    for (const t of templates) {
+      let score;
+      if (t.face) {
+        const v = face ? face[Object.keys(t.face)[0]] ?? 0 : 0;
+        const need = Object.values(t.face)[0];
+        score = Math.max(0, Math.min(1, 0.5 + (v - need) * 2));
+      } else {
+        if (!live) continue;
+        const m = mirror(t), d1 = distance(live, t), d2 = distance(live, m);
+        var used = d2 < d1 ? m : t;
+        score = Math.max(0, 1 - Math.min(d1, d2) / 0.9);
+      }
+      const key = t.player + ":" + t.id;
+      if (!best[key] || best[key].score < score) best[key] = { player: t.player, id: t.id, label: t.label, score, template: t.face ? t : used };
+    }
+    return Object.values(best).sort((a, b) => b.score - a.score);
   }
 
-  // ---- open palm closes the stat page ----
-  if (statsOpen){
-    if (palm){
-      if (!palmStart) palmStart = now;
-      if (now - palmStart > 1000) closeStats();
-    } else palmStart = 0;
+  const api = { rank, distance, mirror };
+  if (typeof module !== "undefined") module.exports = api; else root.CellyMatcher = api;
+})(this);
+
+</script>
+<script>
+// ---------- stick figures (shared by playbook, live ghost and player page) ----------
+const TEAM = {WAS:["#002B5C","#E31837"],DEN:["#0E2240","#FEC524"],GSW:["#1D428A","#FFC72C"],CLE:["#860038","#FDBB30"],
+  PHI:["#006BB6","#ED174C"],LAL:["#552583","#FDB927"],CHI:["#CE1141","#111111"],MIL:["#00471B","#EEE1C6"],
+  SAC:["#5A2D81","#C4CED4"],DAL:["#00538C","#B8C4CA"]};
+const LIMBS = [["ls","lel"],["lel","lwr"],["lwr","lix"],["rs","rel"],["rel","rwr"],["rwr","rix"],["ls","rs"],["ls","lh"],["rs","rh"],["lh","rh"]];
+
+function bodyPoints(t){
+  return Object.assign({ls:[0.5,0],rs:[-0.5,0],lh:[0.35,1.9],rh:[-0.35,1.9]}, t.pts || {});
+}
+// draw template t: map body units -> canvas via (ox, oy, s). mirrorX flips horizontally.
+function drawFigure(ctx, t, ox, oy, s, color, width, mirrorX){
+  ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width; ctx.lineCap = "round";
+  const X = x => ox + (mirrorX ? -x : x) * s, Y = y => oy + y * s;
+  if (t.face){ // Kobe: a face with the jaw pushed out
+    const r = s * 1.2;
+    ctx.beginPath(); ctx.ellipse(ox, oy, r*0.8, r, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(ox - r*0.3, oy - r*0.2, width, 0, 7); ctx.arc(ox + r*0.3, oy - r*0.2, width, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(ox - r*0.35, oy + r*0.35); ctx.lineTo(ox + r*0.35, oy + r*0.35); ctx.stroke(); // upper teeth
+    ctx.beginPath(); ctx.moveTo(ox - r*0.45, oy + r*0.55); ctx.quadraticCurveTo(ox, oy + r*0.3, ox + r*0.45, oy + r*0.55); ctx.stroke(); // jutting lower jaw
+    ctx.restore(); return;
   }
+  const P = bodyPoints(t);
+  for (const [a,b] of LIMBS){ if(!P[a]||!P[b]) continue; ctx.beginPath(); ctx.moveTo(X(P[a][0]),Y(P[a][1])); ctx.lineTo(X(P[b][0]),Y(P[b][1])); ctx.stroke(); }
+  const n = P.nose; ctx.beginPath(); ctx.arc(X(n[0]), Y(n[1]) , s*0.32, 0, Math.PI*2); ctx.stroke();
+  for (const k of ["lix","rix"]) { const p=P[k]; ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]), width*0.9, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+function drawCard(canvas, t, color){
+  const c = canvas.getContext("2d"), w = canvas.width;
+  c.clearRect(0,0,w,w);
+  if (t.face) return drawFigure(c, t, w/2, w/2, w/4, color, w/40);
+  // fit the figure's bounding box into the card
+  const P = bodyPoints(t); let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  for (const k in P){ x0=Math.min(x0,P[k][0]); x1=Math.max(x1,P[k][0]); y0=Math.min(y0,P[k][1]); y1=Math.max(y1,P[k][1]); }
+  y0 -= 0.4; const s = Math.min(w*0.84/(x1-x0), w*0.84/(y1-y0));
+  drawFigure(c, t, w/2 - (x0+x1)/2*s, w/2 - (y0+y1)/2*s, s, color, Math.max(3, w/34));
 }
 
-function setText(id, txt, good){
-  const el = $(id);
-  el.textContent = txt;
-  el.className = good ? "on" : "off";
+// playbook: one card per celebration (first template of each)
+const seen = new Set(), playEls = {};
+for (const t of TEMPLATES){
+  const key = t.player+":"+t.id; if (seen.has(key)) continue; seen.add(key);
+  const el = document.createElement("div"); el.className = "play";
+  const cv = document.createElement("canvas"); cv.width = cv.height = 300;
+  const sp = document.createElement("span"); sp.textContent = t.player === "_timeout" ? "Timeout (exit)" : t.label;
+  el.append(cv, sp); document.getElementById("plays").append(el);
+  drawCard(cv, t, t.player === "_timeout" ? "#d0342c" : "#1f4fbf");
+  playEls[key] = el;
 }
+</script>
+<script type="module">
+import { FilesetResolver, PoseLandmarker, HandLandmarker, FaceLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-function openStats(){
-  statsOpen = true; holdStart = 0; palmStart = 0;
-  $("stats").classList.add("show");
-  $("meter").style.width = "0%";
-  horn();
-}
-function closeStats(){
-  statsOpen = false;
-  cooldownUntil = millis() + 1500;
-  $("stats").classList.remove("show");
-}
-$("closeBtn").onclick = closeStats;
+const $ = id => document.getElementById(id);
+const video = $("video"), canvas = $("canvas"), ctx = canvas.getContext("2d");
+const MODELS = "https://storage.googleapis.com/mediapipe-models/";
+const THRESH = 0.72, MARGIN = 0.12, HOLD_MS = 900;
+const PT = { nose:0, lel:13, rel:14, lwr:15, rwr:16, lix:19, rix:20 };
+let pose, hands, face, audio, pageOpen = false, openedAt = 0, frame = 0;
+let lead = null, leadSince = 0, lastSeen = 0, lastFace = null, fpsT = performance.now(), fpsN = 0;
 
-// ---------- UI ----------
-$("near").oninput = e => $("nearVal").textContent = e.target.value;
-$("hold").oninput = e => $("holdVal").textContent = e.target.value;
-$("sound").onclick = () => {
-  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-  audioCtx.resume();
-  $("sound").textContent = "Sound on";
-  horn();
+$("dbgBtn").onclick = e => { const d = $("debug"); d.hidden = !d.hidden; e.target.setAttribute("aria-pressed", String(!d.hidden)); e.target.textContent = d.hidden ? "Show tracking numbers" : "Hide tracking numbers"; };
+$("closeBtn").onclick = () => closePlayer();
+addEventListener("keydown", e => { if (e.key === "Escape" && pageOpen) closePlayer(); });
+
+$("start").onclick = async () => {
+  $("start").disabled = true; $("start").textContent = "Loading…";
+  audio = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    video.srcObject = stream; await video.play();
+  } catch (err) {
+    $("gate").querySelector("p").textContent = "The camera didn't turn on. Allow camera access for this page in your browser's address bar, then reload.";
+    $("start").textContent = "Camera blocked"; return;
+  }
+  $("banner").textContent = "Loading tracking models (first time takes a few seconds)";
+  const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+  const make = async (Cls, path, extra) => {
+    try { return await Cls.createFromOptions(files, { baseOptions: { modelAssetPath: MODELS + path, delegate: "GPU" }, runningMode: "VIDEO", ...extra }); }
+    catch { return await Cls.createFromOptions(files, { baseOptions: { modelAssetPath: MODELS + path, delegate: "CPU" }, runningMode: "VIDEO", ...extra }); }
+  };
+  [pose, hands, face] = await Promise.all([
+    make(PoseLandmarker, "pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task", { numPoses: 1 }),
+    make(HandLandmarker, "hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", { numHands: 2 }),
+    make(FaceLandmarker, "face_landmarker/face_landmarker/float16/1/face_landmarker.task", { numFaces: 1, outputFaceBlendshapes: true }),
+  ]);
+  $("gate").hidden = true;
+  horn(0.12);
+  requestAnimationFrame(loop);
 };
 
-// arena horn: two detuned sawtooths
-function horn(){
-  if (!audioCtx) return;
-  const t = audioCtx.currentTime, g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.25, t + 0.03);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
-  g.connect(audioCtx.destination);
-  [220, 223, 330].forEach(f => {
-    const o = audioCtx.createOscillator();
-    o.type = "sawtooth"; o.frequency.value = f;
-    o.connect(g); o.start(t); o.stop(t + 0.95);
-  });
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function fingerStates(k){ // k: 21 [x,y] pixel points
+  const w = k[0], palm = dist(k[0], k[9]);
+  const out = [dist(k[4], k[5]) > palm * 0.55 && dist(w, k[4]) > dist(w, k[3])];
+  for (const [tip, pip] of [[8,6],[12,10],[16,14],[20,18]]) out.push(dist(w, k[tip]) > dist(w, k[pip]) * 1.1);
+  return out.map(Number);
+}
+
+function readBody(ts){
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const pr = pose.detectForVideo(video, ts);
+  const hr = hands.detectForVideo(video, ts);
+  if (frame % 3 === 0){
+    const fr = face.detectForVideo(video, ts);
+    const cats = fr.faceBlendshapes?.[0]?.categories;
+    lastFace = cats ? Object.fromEntries(cats.map(c => [c.categoryName, c.score])) : null;
+  }
+  const handPts = hr.landmarks.map(h => h.map(p => [p.x * vw, p.y * vh]));
+  if (!pr.landmarks.length) return { live: null, handPts, raw: null };
+  const lm = pr.landmarks[0], px = i => [lm[i].x * vw, lm[i].y * vh, lm[i].visibility ?? 1];
+  const ls = px(11), rs = px(12), sw = dist(ls, rs), cx = (ls[0] + rs[0]) / 2, cy = (ls[1] + rs[1]) / 2;
+  if (sw < 15 || Math.min(ls[2], rs[2]) < 0.5) return { live: null, handPts, raw: null };
+  const pts = {};
+  for (const k in PT){ const p = px(PT[k]); pts[k] = [(p[0] - cx) / sw, (p[1] - cy) / sw, p[2]]; }
+  // attach each tracked hand to the nearer wrist
+  const fingers = { l: null, r: null };
+  for (const h of handPts){
+    const dl = dist(h[0], px(15)), dr = dist(h[0], px(16));
+    const side = dl < dr ? "l" : "r";
+    if (Math.min(dl, dr) < sw * 0.8) fingers[side] = fingerStates(h);
+  }
+  return { live: { pts, fingers }, handPts, raw: { cx, cy, sw, lm, vw, vh } };
+}
+
+const name = p => p === "_timeout" ? "Timeout" : PLAYERS[p]?.name || p;
+
+function loop(ts){
+  requestAnimationFrame(loop);
+  if (video.readyState < 2) return;
+  frame++;
+  const { live, handPts, raw } = readBody(ts);
+  const W = canvas.width = video.videoWidth, H = canvas.height = video.videoHeight;
+
+  // mirrored camera + tracking
+  ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, W, H);
+  ctx.fillStyle = "rgba(11,12,16,.35)"; ctx.fillRect(0, 0, W, H);
+  if (raw){
+    const L = raw.lm, P = i => [L[i].x * W, L[i].y * H];
+    ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 4; ctx.lineCap = "round";
+    for (const [a, b] of [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24]]){ ctx.beginPath(); ctx.moveTo(...P(a)); ctx.lineTo(...P(b)); ctx.stroke(); }
+  }
+  ctx.fillStyle = "#ffb627";
+  for (const h of handPts) for (const p of h){ ctx.beginPath(); ctx.arc(p[0], p[1], 3.5, 0, 7); ctx.fill(); }
+
+  // score every celebration
+  const pool = TEMPLATES.filter(t => pageOpen ? t.player === "_timeout" : t.player !== "_timeout");
+  const ranked = CellyMatcher.rank(live, pool, lastFace);
+  const top = ranked[0], second = ranked.find(r => r.player !== top?.player);
+
+  // ghost of the leading move, laid over your shoulders
+  if (raw && top && top.template.pts && top.score > 0.35){
+    ctx.globalAlpha = Math.min(1, top.score);
+    drawFigure(ctx, top.template, raw.cx, raw.cy, raw.sw, "#ffb627", 5);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+
+  const now = performance.now();
+  const qualifies = top && top.score >= THRESH && (!second || top.score - second.score >= MARGIN) && now - openedAt > 1200;
+  if (qualifies){
+    const key = top.player + ":" + top.id;
+    if (!lead || lead.key !== key){ lead = { key, r: top }; leadSince = now; }
+    lastSeen = now;
+  } else if (lead && now - lastSeen > 250) lead = null; // small grace for a flickery frame
+
+  const held = lead ? now - leadSince : 0;
+  $("hold").style.width = Math.min(100, held / HOLD_MS * 100) + "%";
+  if (lead && held >= HOLD_MS){
+    if (pageOpen) closePlayer(); else openPlayer(lead.r);
+    lead = null;
+  }
+
+  // scorer's table
+  if (frame % 4 === 0){
+    const byPlayer = []; const done = new Set();
+    for (const r of ranked){ if (done.has(r.player)) continue; done.add(r.player); byPlayer.push(r); if (byPlayer.length === 5) break; }
+    $("bars").innerHTML = byPlayer.length ? byPlayer.map((r, i) =>
+      `<li class="${i === 0 && r.score >= THRESH ? "lead" : ""}"><span class="nm">${r.label}</span><span class="pc">${Math.round(r.score * 100)}%</span><span class="tr"><i style="width:${Math.round(r.score * 100)}%"></i></span></li>`).join("")
+      : `<li class="empty">Step into frame.</li>`;
+    $("call").textContent = !live && !lastFace ? "Can't see you. Back up so your shoulders and hands are in frame."
+      : lead ? `Hold it… ${name(lead.r.player)} incoming`
+      : pageOpen ? "Make a T with your hands to call timeout."
+      : top && top.score > 0.5 ? `Looks a bit like "${top.label}". Commit to it.`
+      : "Hit a celebration.";
+    $("banner").textContent = pageOpen ? "Player page open" : "Live · reading your body";
+    for (const k in playEls) playEls[k].classList.toggle("hit", !!(lead && lead.key === k));
+    $("dBody").textContent = live ? "yes" : "no";
+    $("dHands").textContent = handPts.length;
+    $("dJaw").textContent = lastFace ? (lastFace.jawForward ?? 0).toFixed(2) : "no face";
+  }
+  fpsN++; if (now - fpsT > 1000){ $("dFps").textContent = fpsN + " fps"; fpsN = 0; fpsT = now; }
+}
+
+function openPlayer(r){
+  const p = PLAYERS[r.player]; if (!p) return;
+  const [c1, c2] = TEAM[p.abbr] || ["#222", "#ffb627"];
+  const el = $("player"); el.style.setProperty("--team1", c1); el.style.setProperty("--team2", c2);
+  $("pNum").textContent = p.num; $("pName").textContent = p.name; $("pMove").textContent = r.label; $("pId").textContent = p.bdl_id;
+  $("pFacts").innerHTML = [["Team", p.team], ["Height", p.ht], ["Weight", p.wt + " lb"], ["College", p.college], ["Drafted", p.draft], ["Position", p.pos]]
+    .map(([k, v]) => `<div class="fact"><small>${k}</small><strong>${v}</strong></div>`).join("");
+  drawCard($("pFig"), r.template, c1);
+  el.classList.add("show"); pageOpen = true; openedAt = performance.now();
+  horn(0.25);
+}
+function closePlayer(){
+  $("player").classList.remove("show"); pageOpen = false; openedAt = performance.now();
+  whistle();
+}
+
+// ---------- arena sound ----------
+function horn(vol){
+  if (!audio) return; audio.resume();
+  const t = audio.currentTime, g = audio.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+  g.connect(audio.destination);
+  for (const f of [196, 198.5, 294]){ const o = audio.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + 1.15); }
+}
+function whistle(){
+  if (!audio) return;
+  const t = audio.currentTime, g = audio.createGain(), o = audio.createOscillator(), lfo = audio.createOscillator(), lg = audio.createGain();
+  o.frequency.value = 2900; lfo.frequency.value = 38; lg.gain.value = 180; lfo.connect(lg); lg.connect(o.frequency);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.02); g.gain.setValueAtTime(0.12, t + 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+  o.connect(g); g.connect(audio.destination); o.start(t); lfo.start(t); o.stop(t + 0.65); lfo.stop(t + 0.65);
 }
 </script>
 </body>
